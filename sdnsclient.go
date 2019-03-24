@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	//"os/exec"
+	//"net"
 	"strings"
 	"time"
 )
@@ -39,25 +40,27 @@ func parseLookupCfg(filename string) ([]string, int, string) {
 	return names, lcfg.QPS, lcfg.Server
 }
 
-func resolveWorker(domains <-chan string, dnsserver string) {
+func resolveWorker(domains <-chan string, dnsserver string, udpConn *dns.Conn) {
 	for domain := range domains {
-
-		client := dns.Client{}
 		req := dns.Msg{}
 		req.SetQuestion(domain+".", dns.TypeA)
-		reply, _, err := client.Exchange(&req, dnsserver+":1053")
-		if err != nil {
+
+		//Send the Query
+		if err := udpConn.WriteMsg(&req); err != nil {
 			log.Println(err)
 		}
 
+		//Wait and Receive for the response
+		reply, err := udpConn.ReadMsg()
 		if err == nil {
 			if len(reply.Answer) == 0 {
 				log.Println("No results")
 			}
+			//log.Printf("Received Results")
 			for _, ans := range reply.Answer {
 				Arecord := ans.(*dns.A)
 				_ = Arecord
-				//fmt.Printf("Domain %s resolved to %s\n", domain, Arecord.A)
+				//log.Printf("Domain %s resolved to %s\n", domain, Arecord.A)
 			}
 		}
 
@@ -67,13 +70,26 @@ func resolveWorker(domains <-chan string, dnsserver string) {
 	}
 }
 
-func createWorkers(count int, dnsserver string) chan string {
+func openUDPConn(dnsserver string) *dns.Conn {
+
+	client := dns.Client{}
+	udpConn, err := client.Dial(dnsserver)
+	if err != nil {
+		return nil
+	}
+	return udpConn
+}
+
+func createWorkers(count int, dnsserver string) (chan string, []*dns.Conn) {
 	domainJobs := make(chan string, count)
+	udpConns := make([]*dns.Conn, count)
 
 	for index := 0; index < count; index++ {
-		go resolveWorker(domainJobs, dnsserver)
+		udpConn := openUDPConn(dnsserver)
+		udpConns = append(udpConns, udpConn)
+		go resolveWorker(domainJobs, dnsserver, udpConn)
 	}
-	return domainJobs
+	return domainJobs, udpConns
 }
 
 //Sdnsclientinit gets the domain names and qps rate to trigger DNS lookups
@@ -81,7 +97,7 @@ func createWorkers(count int, dnsserver string) chan string {
 /*{
   "domains":"example1.org, example2.org, w3schools.org, golang.org",
   "qps":200,
-  "server":"127.0.0.1"
+  "server":"127.0.0.1:1053"
 }*/
 func Sdnsclientinit() {
 
@@ -92,7 +108,13 @@ func Sdnsclientinit() {
 	domainIndex := 0
 
 	//Create the worker Pools
-	domainJobs := createWorkers(qps, dnsserver)
+	domainJobs, udpConns := createWorkers(qps, dnsserver)
+
+	for _, udpConn := range udpConns {
+		if udpConn != nil {
+			defer udpConn.Close()
+		}
+	}
 
 	//Divide the domains equally across the qps rate
 	interval = time.Second / time.Duration(qps)

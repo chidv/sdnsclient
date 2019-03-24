@@ -15,7 +15,7 @@ E.g
 {
   "domains":"example1.org, example2.org, w3schools.org, golang.org",
   "qps":200,
-  "server":"127.0.0.1"
+  "server":"127.0.0.1:1053"
 }
 
 Sample Testing application using this package
