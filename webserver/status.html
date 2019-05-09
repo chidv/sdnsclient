@@ -1,0 +1,38 @@
+<html>
+<head>
+<style>
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+
+<h2>DNS Client Stats {{.Version}}</h2>
+
+<table>
+  <tr>
+    <th>Domains</th>
+    <th>QPS Rate</th>
+    <th>DNS Server</th>
+  </tr>
+  <tr>
+    <td>{{.Domains}}</td>
+    <td>{{.Qps}}</td>
+    <td>{{.Dnsserver}}</td>
+  </tr>
+</table>
+</body>
+</html>

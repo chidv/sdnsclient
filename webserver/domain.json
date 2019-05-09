@@ -1,0 +1,5 @@
+{
+    "domains":"example1.org, example2.org, w3schools.org, golang.org",
+    "qps":6,
+    "server":"127.0.0.1:1053"
+}
