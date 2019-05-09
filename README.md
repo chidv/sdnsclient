@@ -30,3 +30,10 @@ func main() {
 
 ./sdns
 
+
+Webserver usage
+===============
+
+http://localhost:12345 to view the QPS Stats
+
+
